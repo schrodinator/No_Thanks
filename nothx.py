@@ -9,12 +9,13 @@ class Deck(object):
         if num < 1:
             sys.exit("cannot initialize Deck with less than 1 card!")
         self.num = num
+        self.offset = offset
         self.cards = []
         for i in range(num):
         # in the official game, cards are numbered from 3 to 35
             self.cards.append(i + offset)
-        self.discard(9)
         self.shuffle()
+        self.discard(9)
 
     def shuffle(self):
     # change to shuffle in-place by swapping random pairs of cards?
@@ -26,9 +27,8 @@ class Deck(object):
         self.cards = b
 
     def discard(self, begone = 1):
-        for j in range(begone):
-            i = randint(0,self.num-1)
-            del self.cards[i]
+        for i in range(begone):
+            self.cards.pop(0)
             self.num -= 1
 
     def draw(self):
@@ -36,6 +36,8 @@ class Deck(object):
             self.num -= 1
             card = self.cards.pop(0)
             return card
+        else:
+            return -1
 
 
 class Player(object):
@@ -44,8 +46,8 @@ class Player(object):
         self.tokens = 11
         self.cards = []
         self.score = 0
-        self.token_threshold = token_threshold
         self.card_threshold = card_threshold
+        self.token_threshold = token_threshold
 
     def play_token(self):
         if self.tokens > 0:
@@ -60,16 +62,19 @@ class Player(object):
     def get_score(self):
         cards = list(self.cards)
         tot = 0
-        low = cards.pop(0)
-        prev = low
-        while len(cards) > 0:
-            current = cards.pop(0)
-            if current > prev + 1:
-                tot += low
-                low = current
-            prev = current
-        tot += low
-        self.score = tot - self.tokens
+        if len(cards) == 0:
+            self.score = 0
+        else:
+            low = cards.pop(0)
+            prev = low
+            while len(cards) > 0:
+                current = cards.pop(0)
+                if current > prev + 1:
+                    tot += low
+                    low = current
+                prev = current
+            tot += low
+            self.score = tot - self.tokens
 
     def logic(self, card_up, pot):
         # returns 1 if player takes card_up, 0 if player passes (spends a token)
@@ -85,26 +90,36 @@ class Player(object):
 
 class Table(object):
 
-    def __init__(self, players, verbose = 1):
-        self.num_players = len(players)
-        if self.num_players < 1:
-            sys.exit("Need players!")
-        self.verbosity = verbose
-        self.deck = Deck()
-        if self.verbosity == 1:
-            print "initial deck:", self.deck.cards
+    def __init__(self, players=[], num_players=0, num_cards=33, offset=3, verbose=1):
         self.players = players
-        #self.players = []
-        #for i in range(self.num_players):
-        #    self.add_player()
+        self.verbosity = verbose
         self.whose_turn = 0
         self.pot = 0
+        self.deck = Deck(num_cards, offset)
+        if len(players) > 0:
+            self.num_players = len(players)
+        else:
+            if num_players > 0:
+                self.num_players = num_players
+                for i in range(self.num_players):
+                    self.add_player()
+            else:
+                sys.exit("Need players!")
+        if self.verbosity == 1:
+            print "\nInitial deck:", self.deck.cards
         self.card_up = self.deck.draw()
         if self.verbosity == 1:
             print "Card up:", self.card_up
 
     def add_player(self):
-        self.players.append(Player())
+        # Add a player with random attributes
+        min_card = self.deck.offset
+        max_card = min_card + self.deck.num - 1
+        card_threshold = randint(min_card, max_card)
+        token_threshold = randint(0, 10)
+        self.players.append(Player(card_threshold, token_threshold))
+        if self.verbosity == 1:
+            print "Created Player with card_threshold:", card_threshold,"and token_threshold:",token_threshold
 
     def next_turn(self):
         self.players[self.whose_turn].play_token()
@@ -142,12 +157,12 @@ class Table(object):
 
 
 def main():
-    myplayers = []
-    myplayers.append(Player(card_threshold=11, token_threshold=5))
-    myplayers.append(Player(card_threshold=9, token_threshold=4))
-    myplayers.append(Player(card_threshold=5, token_threshold=8))
+    #myplayers = []
+    #myplayers.append(Player(card_threshold=11, token_threshold=5))
+    #myplayers.append(Player(card_threshold=9, token_threshold=4))
+    #myplayers.append(Player(card_threshold=5, token_threshold=8))
 
-    mytable = Table(myplayers, verbose=1)
+    mytable = Table(num_players=3)
     mytable.play()
 
     for i,player in enumerate(mytable.players):

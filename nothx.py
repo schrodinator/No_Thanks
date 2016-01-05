@@ -14,7 +14,7 @@ class Deck(object):
         self.shuffle()
 
     def shuffle(self):
-    # learn how to shuffle in-place
+    # change to shuffle in-place by swapping random pairs of cards?
         b = []
         for i in range(self.num):
             j = random.choice(self.cards)
@@ -32,7 +32,7 @@ class Deck(object):
         if self.num > 0:
             self.num -= 1
             card = self.cards.pop()
-            print "Card up:", card
+            #print "Card up:", card
             return card
 
 
@@ -70,9 +70,10 @@ class Player(object):
 
 class Table(object):
 
-    def __init__(self, num_players = 3):
+    def __init__(self, num_players = 3, verbose=1):
         if num_players < 1:
             sys.exit("Need players!")
+        self.verbosity = verbose
         self.deck = Deck()
         self.num_players = num_players
         self.players = []
@@ -81,24 +82,30 @@ class Table(object):
         self.whose_turn = 0
         self.pot = 0
         self.card_up = self.deck.draw()
+        if self.verbosity == 1:
+            print "Card up:", self.card_up
 
     def add_player(self):
         self.players.append(Player())
 
     def next_turn(self):
         self.players[self.whose_turn].play_chip()
-        print "Player", self.whose_turn, "plays chip, has", self.players[self.whose_turn].chips, "remaining"
+        if self.verbosity == 1:
+            print "Player", self.whose_turn, "plays chip, has", self.players[self.whose_turn].chips, "remaining"
         self.pot += 1
         self.whose_turn = (self.whose_turn + 1) % self.num_players
         self.play()
 
     def player_takes_card(self):
-        print "Player", self.whose_turn, "takes card:", self.card_up
+        if self.verbosity == 1:
+            print "Player", self.whose_turn, "takes card:", self.card_up
         self.players[self.whose_turn].take_card(self.card_up)
         self.players[self.whose_turn].chips += self.pot
         self.pot = 0
         if self.deck.num > 0:
             self.card_up = self.deck.draw()
+            if self.verbosity == 1:
+                print "Card up:", self.card_up
             self.play()
         else:
             self.score()
@@ -118,7 +125,7 @@ class Table(object):
 
 
 def main():
-    mytable = Table()
+    mytable = Table(verbose=1)
     mytable.play()
     for player in mytable.players:
          print "cards:", player.cards, "  chips:", player.chips, "  total:", player.score

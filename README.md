@@ -1,6 +1,6 @@
-# No_Thanks
+# No Thanks
 
-"No Thanks" is a deck-building card game whose objective is to obtain the lowest final score. The 3 player game is played with cards numbered 3 through 35, of which 9 are chosen at random and discarded, leaving 24 cards. 
+"No Thanks" is a card game, designed by Thorsten Gimmler, whose objective is to obtain the lowest final score. The 3-5 player game is played with cards numbered 3 through 35, of which 9 are chosen at random and discarded, leaving 24 cards. 
 
 Each player begins the game with 0 cards and 11 tokens. At the beginning of a turn, a card is drawn from the shuffled deck. A player may either take the card or pass by placing one of her tokens into the token pot. If a player is out of tokens, she must take the card. When a player takes a card, another is immediately drawn and the same player may choose to take the new card or pass by playing a token. The next player gets a chance to take/pass on the card only after the previous player has passed. When the card is taken, the player takes all tokens in the token pot along with it. The game ends when the last card from the deck is taken.
 
@@ -10,3 +10,4 @@ A player's final score is calculated by adding the points of the cards in her ha
 
 has a score of 3 + 10 + 15 = 28, from which the number of the player's tokens is then subtracted.
 
+The nothx.py Python script simulates a three-player game to investigate optimal strategy.

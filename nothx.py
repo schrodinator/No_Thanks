@@ -184,7 +184,7 @@ class Table(object):
         other_player_cards = []
         for other_player in self.players:
             if other_player != player:
-                other_player_cards.append(other_player.cards)
+                other_player_cards += other_player.cards
         return other_player_cards
 
     def get_effective_value(self):

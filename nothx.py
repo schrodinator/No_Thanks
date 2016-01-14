@@ -148,10 +148,6 @@ class Table(object):
                 if pos not in given_pos:
                     # add randomized AI player at this position
                     self.add_player(pos)
-                    print "Created Player", pos+1, "at position", pos,\
-                      "with card_threshold:", self.players[pos].card_threshold,\
-                      "and token_threshold:",self.players[pos].token_threshold,\
-                      "and eff_val_threshold:",self.players[pos].eff_val_threshold
             self.players.sort(key=lambda x: x.pos)
         if self.verbosity > 0:
             print "\nInitial deck:", self.deck.cards
@@ -177,6 +173,11 @@ class Table(object):
         token_threshold = randint(0, 10)
         eff_val_threshold = randint(0,4)
         self.players.append(Player(pos, card_threshold, token_threshold, eff_val_threshold))
+        if self.verbosity > 0:
+            print "Created Player", pos+1, "at position", pos,\
+                  "with card_threshold:", self.players[pos].card_threshold,\
+                  "and token_threshold:",self.players[pos].token_threshold,\
+                  "and eff_val_threshold:",self.players[pos].eff_val_threshold
 
     def other_player_cards(self):
         player = self.players[self.whose_turn]
@@ -297,12 +298,17 @@ class Table(object):
                     print "  no cards in hand, card above threshold, plenty of tokens: pass"
                 self.player_passes()
         else:
-            if player.eff_val <= 0:
+            if player.eff_val < 1.0:
+                # Note: < 1 instead of < 0 because it costs 1 to pass
+                # (by playing a token)
                 if self.milking_potential():
                     self.player_passes()
                 else:
                     self.player_takes_card()
-            elif self.deck.num() > 0 and player.eff_val <= player.eff_val_threshold:
+            elif self.deck.num() > 0 and player.eff_val <= player.eff_val_threshold\
+                and (self.pot > 0  \
+                     or self.card_up - 1 not in self.other_player_cards() \
+                     or self.card_up + 1 not in self.other_player_cards()):
                 # The player may choose to take a card with a positive 
                 # effective value (i.e. one which increases the player's score)
                 # in order to obtain the pot and the card for constructing
@@ -361,7 +367,7 @@ class Table(object):
 
 
 def main():
-    mytable = Table(num_ai_players = 3, verbose = 1)
+    mytable = Table(num_ai_players = 3, verbose = 2)
     mytable.play()
 
 

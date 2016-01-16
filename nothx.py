@@ -8,16 +8,18 @@ if sys.version_info[0] != 3:
 
 class Deck(object):
 
-    def __init__(self, num = 33, offset = 3, dis = 9):
-        # Arguments:
-        # num = number of cards in initial setup
-        # offset = lowest numbered card
-        # dis = number of cards to discard in setup
-        #
-        # Defaults are official game values:
-        # cards are numbered from 3 to 35,
-        # i.e. 33 cards with an offset of 3,
-        # 9 of which are discarded (giving a final deck of 24 cards)
+    def __init__(self, num=33, offset=3, dis=9):
+        """
+        Args::
+          num = number of cards in initial setup
+          offset = lowest numbered card
+          dis = number of cards to discard in setup
+
+        Defaults are official game values:
+          cards are numbered from 3 to 35,
+          i.e. 33 cards with an offset of 3,
+          9 of which are discarded (giving a final deck of 24 cards)
+        """
         if num < 1 or offset < 0:
             sys.exit("Cannot initialize Deck with less than 1 card!")
         if num <= dis:
@@ -32,26 +34,23 @@ class Deck(object):
         self.shuffle()
         self.discard(dis)
 
-    def num(self):
-        return len(self.cards)
-
     def shuffle(self):
         shuffled = []
-        num = self.num()
-        for i in range(num):
+        while len(self.cards) > 0:
             j = random.choice(self.cards)
             self.cards.remove(j)
             shuffled.append(j)
         self.cards = shuffled
 
-    def discard(self, begone = 1):
-        if begone < 0 or begone > self.num():
+    def discard(self, begone=1):
+        if begone < 0 or begone > len(self.cards):
             sys.exit("Cannot discard", begone, "cards!")
-        for i in range(begone):
+        while begone > 0:
             self.cards.pop(0)
+            begone -= 1
 
     def draw(self):
-        if self.num() > 0:
+        if len(self.cards) > 0:
             card = self.cards.pop(0)
             return card
         else:
@@ -60,16 +59,19 @@ class Deck(object):
 
 class Player(object):
 
-    def __init__(self, pos, card_threshold = 9, token_threshold = 0, eff_val_threshold = 3):
-        # Arguments:
-        # pos = position in play order (starting from 0)
-        # card_threshold = max value of card to take when player has 0 cards 
-        #         (player will attempt to pass if card_threshold is exceeded)
-        # token_threshold = min number of tokens the player wants to reserve
-        #         for future rounds. When Player has 0 cards in hand,
-        #         Player will take a card exceeding card_threshold in
-        #         order to retain a number of tokens equal to the 
-        #         token_threshold.
+    def __init__(self, pos, card_threshold=9, token_threshold=0, \
+                 eff_val_threshold=3):
+        """
+        Args:
+          pos = position in play order (starting from 0)
+          card_threshold = max value of card to take when player has 0 cards
+                  (player will attempt to pass if card_threshold is exceeded)
+          token_threshold = min number of tokens the player wants to reserve
+                  for future rounds. When Player has 0 cards in hand,
+                  Player will take a card exceeding card_threshold in
+                  order to retain a number of tokens equal to the
+                  token_threshold.
+        """
         self.pos = pos
         self.win = 0
         self.tokens = 11
@@ -119,28 +121,35 @@ class Player(object):
 
 class Table(object):
 
-    def __init__(self, players=[], num_ai_players = 3, num_cards=33, offset=3, dis=9, verbose=1):
-        # Arguments:
-        # players = list of user-created players
-        # num_ai_players = number of computer-generated players desired
-        # num_cards = number of cards in the setup deck (prior to discarding)
-        # offset = the lowest card value
-        # dis = number of cards to discard
-        # verbose = verbosity level. Options:
-        #          0  friendly to computer parsing but not human reading
-        #          1  default human readable
-        #          2  detailed human readable
+    def __init__(self, players=None, num_ai_players=3, num_cards=33, offset=3, \
+                 dis=9, verbose=1):
+        """
+        Args:
+          players = list of user-created objects of class Player
+          num_ai_players = number of computer-generated players desired
+          num_cards = number of cards in the setup deck (prior to discarding)
+          offset = the lowest card value
+          dis = number of cards to discard
+          verbose = verbosity level. Options:
+                   0  friendly to computer parsing but not human reading
+                   1  default human readable
+                   2  detailed human readable
+        """
         self.players = []
-        self.num_players = len(players) + num_ai_players
         self.verbosity = verbose
         self.whose_turn = 0
         self.pot = 0
         self.deck = Deck(num_cards, offset, dis)
+        try:
+            num_nonrandom_players = len(players)
+        except TypeError:
+            num_nonrandom_players = 0
+        self.num_players = num_nonrandom_players + num_ai_players
         if self.num_players > 5:
             sys.exit("Too many players! Max = 5")
         else:
             given_pos = []
-            if len(players) > 0:
+            if num_nonrandom_players > 0:
                 self.players = players
                 for player in players:
                     given_pos.append(player.pos)
@@ -148,10 +157,10 @@ class Table(object):
                 if max(given_pos) >= self.num_players or min(given_pos) < 0:
                     sys.exit("Player position out of bounds")
                 for i in range(4):
-                    ct = given_pos.count(i)
-                    if ct > 1:
+                    cnt = given_pos.count(i)
+                    if cnt > 1:
                         sys.exit("Duplicate player positions")
-                    if ct > 0 and i >= self.num_players:
+                    if cnt > 0 and i >= self.num_players:
                         sys.exit("Player position out of bounds")
             for pos in range(self.num_players):
                 if pos not in given_pos:
@@ -164,29 +173,20 @@ class Table(object):
         if self.verbosity > 0:
             print("Card up:", self.card_up)
 
-    def get_player_positions(self):
-        positions = []
-        if len(self.players) == 0:
-            return positions
-        try:
-            for player in self.players:
-                positions.append(player.pos)
-            return positions.sort()
-        except:
-            sys.exit("Invalid player positions!")
-
     def add_player(self, pos):
         # Add a player with random attributes.
         card_threshold = randint(self.deck.min_card, self.deck.max_card - 1)
         # Do not allow a token_threshold of 11: player will take all the cards.
         token_threshold = randint(0, 10)
-        eff_val_threshold = randint(0,4)
-        self.players.append(Player(pos, card_threshold, token_threshold, eff_val_threshold))
+        eff_val_threshold = randint(0, 4)
+        self.players.append( \
+             Player(pos, card_threshold, token_threshold, eff_val_threshold) \
+        )
         if self.verbosity > 0:
-            print("Created Player", pos+1, "at position", pos,\
-                  "with card_threshold:", self.players[pos].card_threshold,\
-                  "and token_threshold:",self.players[pos].token_threshold,\
-                  "and eff_val_threshold:",self.players[pos].eff_val_threshold)
+            print("Created Player", pos+1, "at position", pos, \
+                  "with card_threshold:", self.players[pos].card_threshold, \
+                  "and token_threshold:", self.players[pos].token_threshold, \
+                  "and eff_val_threshold:", self.players[pos].eff_val_threshold)
 
     def other_player_cards(self):
         player = self.players[self.whose_turn]
@@ -200,8 +200,8 @@ class Table(object):
         for player in self.players:
             if self.card_up + 1 in player.cards:
                 if self.card_up - 1 in player.cards:
-                    # Bridging card - connects two cards/runs in the player's 
-                    # hand. Would lower player's score by the value of the 
+                    # Bridging card - connects two cards/runs in the player's
+                    # hand. Would lower player's score by the value of the
                     # higher run.
                     effective_value = -(self.card_up + 1)
                 else:
@@ -219,9 +219,9 @@ class Table(object):
                     # no chance of completing the run.
                     effective_value = self.card_up
                 else:
-                    # Effective value depends on probability of completing the 
+                    # Effective value depends on probability of completing the
                     # run.
-                    prob = float(self.deck.num()) / float(self.deck.tot_orig_cards)
+                    prob = float(len(self.deck.cards)) / float(self.deck.tot_orig_cards)
                     # Calculate expectation value.
                     effective_value = -2.0*prob + self.card_up*(1.0 - prob)
                     if self.verbosity == 2:
@@ -235,7 +235,7 @@ class Table(object):
 
     def milking_potential(self):
         # If a card is desirable to one player but highly undesirable to all of
-        # the others, the player may deliberately pass with the intention of 
+        # the others, the player may deliberately pass with the intention of
         # "milking" the others for tokens.
         player = self.players[self.whose_turn]
         # Don't milk if any player has no cards in hand
@@ -245,14 +245,14 @@ class Table(object):
                     return 0
         if self.card_up == self.deck.max_card:
             # At best, this card will improve the player's score by 0 points
-            # (that is, if the player has max_card-1 and possibly 
-            # max_card-2...max_card-n). Always better to force someone else to 
-            # take the highest card in the game, until tokens become a 
+            # (that is, if the player has max_card-1 and possibly
+            # max_card-2...max_card-n). Always better to force someone else to
+            # take the highest card in the game, until tokens become a
             # consideration.
 ###################################
 ### do something better here
-            pot_thresh = randint(8,15)
-            if self.deck.num == 0 or self.pot < pot_thresh:
+            pot_thresh = randint(8, 15)
+            if len(self.deck.cards) == 0 or self.pot < pot_thresh:
                 return 1
         # Ensure the effective value is high enough that the card will come
         # back to the milking player, i.e. its effective value will not
@@ -269,14 +269,14 @@ class Table(object):
         return 1
 
     def vindictive_potential(self):
-        # A player who is losing may, out of vindictiveness, take a card 
-        # desired by a player who's milking -- even though the card hurts 
+        # A player who is losing may, out of vindictiveness, take a card
+        # desired by a player who's milking -- even though the card hurts
         # their own score.
         player = self.players[self.whose_turn]
         score = player.get_score()
-        thresh = randint(20,40)
+        thresh = randint(20, 40)
         val = 0
-        if self.deck.num() > len(self.players):
+        if len(self.deck.cards) > len(self.players):
             # Don't be vindictive until late in the game.
             return 0
         for other_player in self.players:
@@ -324,19 +324,23 @@ class Table(object):
                     self.player_passes()
                 else:
                     self.player_takes_card()
-            elif self.deck.num() > 0 and player.eff_val <= player.eff_val_threshold\
-                and (self.pot > 0  \
+            elif len(self.deck.cards) > 0 \
+                and player.eff_val <= player.eff_val_threshold \
+                and ( \
+                     self.pot > 0  \
                      or self.card_up - 1 not in self.other_player_cards() \
-                     or self.card_up + 1 not in self.other_player_cards()):
-                # The player may choose to take a card with a positive 
+                     or self.card_up + 1 not in self.other_player_cards() \
+                ):
+                # The player may choose to take a card with a positive
                 # effective value (i.e. one which increases the player's score)
                 # in order to obtain the pot and the card for constructing
                 # potential future runs.
-                # Note: self.deck.num() > 0 because saving tokens for future 
-                # use doesn't matter in the final round -- only the effective 
+                # Note: # cards > 0 because saving tokens for future
+                # use doesn't matter in the final round -- only the effective
                 # value matters at the end of the game.
                 if self.verbosity == 2:
-                    print("  eff_val below threshold: take for potential future benefit")
+                    print("  eff_val below threshold: \
+                             take for potential future benefit")
                 self.player_takes_card()
             elif self.vindictive_potential():
                 self.player_takes_card()
@@ -365,7 +369,7 @@ class Table(object):
         if player.tokens > player.max_tokens:
             player.max_tokens = player.tokens
         self.pot = 0
-        if self.deck.num() > 0:
+        if len(self.deck.cards) > 0:
             self.card_up = self.deck.draw()
             if self.verbosity > 0:
                 print("Card up:", self.card_up)
@@ -382,11 +386,12 @@ class Table(object):
 
     def score(self):
         scores = []
-        for i,player in enumerate(self.players):
+        for i, player in enumerate(self.players):
             player.get_score()
             scores.append(player.score)
             if self.verbosity > 0:
-                print("Player", i+1, " score:", player.score, " tokens:", player.tokens, \
+                print("Player", i+1, " score:", player.score, \
+                      " tokens:", player.tokens, \
                       " cards:", sorted(player.cards))
         low = min(scores)
         wins = 0
@@ -418,7 +423,7 @@ class Table(object):
 
 
 def main():
-    mytable = Table(num_ai_players = 3, verbose = 0)
+    mytable = Table(num_ai_players=3, verbose=1)
     mytable.play()
     mytable.score()
 

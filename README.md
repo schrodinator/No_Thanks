@@ -18,3 +18,22 @@ The nothx.py Python script simulates a game of "No Thanks" to investigate optima
 | card_threshold    | Maximum value of card the player is willing to take at the beginning of the game, when the player has 0 cards in hand. For a game using the standard deck, possible values are 3-35. |
 | token_threshold   | Minimum number of tokens the player desires to reserve for future rounds. At the beginning of the game, when the player has 0 cards in hand, the player will take a card exceeding card_threshold in order to retain a number of tokens equal to the token_threshold for use in future rounds. Allowed values are 0-10. |
 | eff_val_threshold | The effective value threshold, where effective value = value of card - value of pot. A player may be willing to take a card that increases her score by a small amount in order to obtain the pot and a card with which to build future runs. The effective value threshold is not used during the final round, when obtaining tokens and cards for future rounds ceases to matter. Advised values (used for computer-generated players) are 0-4. Note that 1 is the break-even value because it costs 1 (token) to pass. |
+
+Player features collected for analysis:
+- Player position (pos)
+- Did player win?
+   - 0   No
+   - 1   Yes
+   - 2   Tied
+- Final score
+- card_threshold
+- token_threshold
+- eff_val_threshold
+- Number of passes before first card taken
+- Min number of tokens ever in player's possession
+- Max number of tokens ever in player's possession
+- Final hand (in order of obtainment)
+
+Deck features collected for analysis:
+- Initial deck after set-up
+

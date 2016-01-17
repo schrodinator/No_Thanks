@@ -1,27 +1,41 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 import sys
 import random
 from random import randint
-
-if sys.version_info[0] != 3:
-    sys.exit("Please re-run with Python 3")
+from statistics import mean, median_low, median_high, median
 
 class Deck(object):
+    """A deck of cards.
+
+    Attributes:
+      cards (List[int])
+      min_card (int)
+      max_card (int)
+      tot_orig_cards (int)
+      tot_cards (int)
+
+    Methods:
+      shuffle()
+      discard()
+      draw()
+    """
 
     def __init__(self, num=33, offset=3, dis=9):
         """
         Args::
-          num = number of cards in initial setup
-          offset = lowest numbered card
-          dis = number of cards to discard in setup
+          num (int): number of cards in initial setup (default 33)
+          offset (int): lowest numbered card (default 3)
+          dis (int): number of cards to discard in setup (default 9)
 
-        Defaults are official game values:
-          cards are numbered from 3 to 35,
-          i.e. 33 cards with an offset of 3,
-          9 of which are discarded (giving a final deck of 24 cards)
+        Note:
+          Defaults are official game values: cards are numbered from 3 to 35,
+          i.e. 33 cards with an offset of 3, 9 of which are discarded 
+          (giving a final deck of 24 cards).
         """
-        if num < 1 or offset < 0:
+        if num < 1:
             sys.exit("Cannot initialize Deck with less than 1 card!")
+        if offset < 1:
+            sys.exit("A positive offset value is required")
         if num <= dis:
             sys.exit("Discarding all the cards...")
         self.min_card = offset
@@ -35,6 +49,7 @@ class Deck(object):
         self.discard(dis)
 
     def shuffle(self):
+        """Randomize the order of cards in the deck."""
         shuffled = []
         while len(self.cards) > 0:
             j = random.choice(self.cards)
@@ -43,6 +58,11 @@ class Deck(object):
         self.cards = shuffled
 
     def discard(self, begone=1):
+        """Remove a number of cards from the deck.
+
+        Args:
+            begone (int):  number of cards to discard
+        """
         if begone < 0 or begone > len(self.cards):
             sys.exit("Cannot discard", begone, "cards!")
         while begone > 0:
@@ -50,76 +70,104 @@ class Deck(object):
             begone -= 1
 
     def draw(self):
-        if len(self.cards) > 0:
+        """Remove a card from the deck and return its value.
+
+        Returns:
+            int: value of card, or 0 if no cards in deck
+        """
+        try:
             card = self.cards.pop(0)
             return card
-        else:
-            return -1
+        except IndexError:
+            return 0
 
 
 class Player(object):
+    """Define a player by her attributes (risk thresholds) and actions
 
-    def __init__(self, pos, card_threshold=9, token_threshold=0, \
-                 eff_val_threshold=3):
+    Attributes:
+      pos (int): Position in play order (indexed from 0)
+      win (int): 
+      tokens (int): Number of tokens in the player's possession.
+    """
+
+    def __init__(self, pos, init_threshold=9, eff_val_threshold=0, \
+                 token_threshold=0, pot_threshold=8):
         """
         Args:
-          pos = position in play order (starting from 0)
-          card_threshold = max value of card to take when player has 0 cards
-                  (player will attempt to pass if card_threshold is exceeded)
-          token_threshold = min number of tokens the player wants to reserve
-                  for future rounds. When Player has 0 cards in hand,
-                  Player will take a card exceeding card_threshold in
-                  order to retain a number of tokens equal to the
-                  token_threshold.
+          pos (int): Position in play order (starting from 0)
+          init_threshold (int): Max effective value of card to take when player
+                  has no cards in hand. Player will attempt to pass if this
+                  value is exceeded.
+          eff_val_threshold (int): Max effective value of card to take after
+                  the first turn (used when player has at least 1 card in hand)
+          token_threshold (int): Min number of tokens the player desires to
+                  retain prior to the final round. If the player's number of
+                  tokens falls below this threshold, she will consider the
+                  pot threshold before considering the effective value of the
+                  card.
+          pot_threshold (int): Min number of tokens in the pot that will entice
+                  the player to take the card, regardless of effective value.
         """
         self.pos = pos
-        self.win = 0
         self.tokens = 11
-        self.min_tokens = 11
-        self.max_tokens = 11
         self.cards = []
-        self.pass_before_first_card = 0
         self.score = 0
         self.eff_val = 0
-        self.card_threshold = card_threshold
+        self.init_threshold = init_threshold
+        # Do not allow a token_threshold of 11: player will take all the cards.
         if token_threshold > 10 or token_threshold < 0:
             sys.exit("token_threshold must be 0-10")
         else:
             self.token_threshold = token_threshold
+        self.pot_threshold = pot_threshold
         self.eff_val_threshold = eff_val_threshold
+        self.win = 0
+        self.num_runs = 0
+        self.token_history = [ 11 ]
+        self.eff_val_history = []
 
     def play_token(self):
         if self.tokens > 0:
             self.tokens -= 1
-            if self.tokens < self.min_tokens:
-                self.min_tokens = self.tokens
+            self.token_history.append(self.tokens)
         else:
             sys.exit("Played an imaginary token!")
 
-    def take_card(self, card):
+    def take_card(self, card, pot):
         self.cards.append(card)
-#       self.cards.sort()
+        self.tokens += pot
+        self.token_history.append(self.tokens)
+        self.eff_val_history.append(self.eff_val)
 
     def get_score(self):
+        """
+        Calculate the player's current score.
+        """
         cards = list(sorted(self.cards))
         tot = 0
+        self.num_runs = 0
         if len(cards) == 0:
             self.score = 0
         else:
             low = cards.pop(0)
             prev = low
+            self.num_runs = 1
             while len(cards) > 0:
                 current = cards.pop(0)
                 if current > prev + 1:
                     tot += low
                     low = current
+                    self.num_runs += 1
                 prev = current
             tot += low
             self.score = tot - self.tokens
-            return self.score
+        return self.score
 
 
 class Table(object):
+    """The Table object contains a Deck object, 3-5 Player objects, 
+       and the core game logic"""
 
     def __init__(self, players=None, num_ai_players=3, num_cards=33, offset=3, \
                  dis=9, verbose=1):
@@ -174,21 +222,29 @@ class Table(object):
             print("Card up:", self.card_up)
 
     def add_player(self, pos):
-        # Add a player with random attributes.
-        card_threshold = randint(self.deck.min_card, self.deck.max_card - 1)
-        # Do not allow a token_threshold of 11: player will take all the cards.
+        """
+        Add a player with random attributes
+        (card_thresohld, token_threshold, and eff_val_threshold)
+        """
+        init_threshold = randint(self.deck.min_card, self.deck.max_card - 1)
+        eff_val_threshold = randint(0, 6)
         token_threshold = randint(0, 10)
-        eff_val_threshold = randint(0, 4)
+        pot_threshold = randint(6, 20)
         self.players.append( \
-             Player(pos, card_threshold, token_threshold, eff_val_threshold) \
+             Player(pos, init_threshold, eff_val_threshold, token_threshold, \
+                    pot_threshold)
         )
         if self.verbosity > 0:
             print("Created Player", pos+1, "at position", pos, \
-                  "with card_threshold:", self.players[pos].card_threshold, \
+                  "with init_threshold:", self.players[pos].init_threshold, \
                   "and token_threshold:", self.players[pos].token_threshold, \
                   "and eff_val_threshold:", self.players[pos].eff_val_threshold)
 
     def other_player_cards(self):
+        """
+        Returns a list of all cards currently held by all players
+        other than the current player.
+        """
         player = self.players[self.whose_turn]
         other_player_cards = []
         for other_player in self.players:
@@ -197,6 +253,11 @@ class Table(object):
         return other_player_cards
 
     def get_effective_value(self):
+        """
+        Returns the effective value of card_up to the current player.
+        The effective value is the amount by which taking the card 
+        and the pot woudl alter the player's current score.
+        """
         for player in self.players:
             if self.card_up + 1 in player.cards:
                 if self.card_up - 1 in player.cards:
@@ -234,9 +295,11 @@ class Table(object):
             player.eff_val = effective_value
 
     def milking_potential(self):
-        # If a card is desirable to one player but highly undesirable to all of
-        # the others, the player may deliberately pass with the intention of
-        # "milking" the others for tokens.
+        """
+        If a card is desirable to one player but highly undesirable to all of
+        the others, the player may deliberately pass with the intention of
+        "milking" the others for tokens.
+        """
         player = self.players[self.whose_turn]
         # Don't milk if any player has no cards in hand
         for other_player in self.players:
@@ -249,18 +312,16 @@ class Table(object):
             # max_card-2...max_card-n). Always better to force someone else to
             # take the highest card in the game, until tokens become a
             # consideration.
-###################################
-### do something better here
-            pot_thresh = randint(8, 15)
-            if len(self.deck.cards) == 0 or self.pot < pot_thresh:
+            if len(self.deck.cards) == 0 or self.pot < player.pot_threshold:
                 return 1
         # Ensure the effective value is high enough that the card will come
         # back to the milking player, i.e. its effective value will not
         # drop to/below 4 before all other players have passed.
-        thresh = len(self.players) + 4
+        num = len(self.players)
         for other_player in self.players:
             if other_player != player:
-                if other_player.tokens == 0 or other_player.eff_val < thresh:
+                if other_player.tokens < num \
+                   or other_player.eff_val < num + 4:
                     if self.verbosity == 2:
                         print("  too risky, not milking")
                     return 0
@@ -269,9 +330,12 @@ class Table(object):
         return 1
 
     def vindictive_potential(self):
-        # A player who is losing may, out of vindictiveness, take a card
-        # desired by a player who's milking -- even though the card hurts
-        # their own score.
+        """
+        A player who is losing may, out of vindictiveness, take a card
+        desired by a player who is milking -- even though the card hurts
+        her own score. This method returns 1 if the player feels vindictive
+        and 0 if vindictiveness is not warranted.
+        """
         player = self.players[self.whose_turn]
         score = player.get_score()
         thresh = randint(20, 40)
@@ -292,27 +356,33 @@ class Table(object):
                 print("  player takes card out of spite")
             return 1
 
-    def player_logic(self):
+    def play(self):
+        """
+        Core game logic. Decide whether a player will take or pass on the card
+        card_up, based on the player's attributes (init_threshold,
+        token_threshold, eff_val_threshold) and circumstances of the game
+        (value of card_up, number of cards remaining in deck, cards in other
+        players' possession, etc.)
+        """
         player = self.players[self.whose_turn]
+        self.get_effective_value()
         if player.tokens == 0:
             if self.verbosity == 2:
                 print("  no tokens left")
             self.player_takes_card()
+        elif player.tokens < player.token_threshold \
+                  and self.pot > player.pot_threshold:
+            if self.verbosity == 2:
+                print("  take it for the pot. tokens:", \
+                      player.tokens, "  pot:", self.pot)
+            self.player_takes_card()
         elif len(player.cards) == 0:
             # No cards in hand yet.
-            if self.card_up <= player.card_threshold:
+            if player.eff_val <= player.init_threshold:
                 if self.verbosity == 2:
                     print("  no cards in hand, card within threshold: take")
                 self.player_takes_card()
-            elif player.tokens < player.token_threshold:
-                if self.verbosity == 2:
-                    print("  no cards in hand, tokens less than threshold: take")
-                player.pass_before_first_card += 1
-                self.player_takes_card()
             else:
-                if self.verbosity == 2:
-                    print("  no cards in hand, card above threshold," \
-                             "plenty of tokens: pass")
                 self.player_passes()
         else:
             if player.eff_val < 1.0:
@@ -335,21 +405,24 @@ class Table(object):
                 # effective value (i.e. one which increases the player's score)
                 # in order to obtain the pot and the card for constructing
                 # potential future runs.
-                # Note: # cards > 0 because saving tokens for future
-                # use doesn't matter in the final round -- only the effective
-                # value matters at the end of the game.
+                # Note: Saving tokens for future use doesn't matter in the final
+                # round -- only the effective value matters at the end of the 
+                # game.
                 if self.verbosity == 2:
-                    print("  eff_val below threshold: \
-                             take for potential future benefit")
+                    print("  eff_val below threshold")
                 self.player_takes_card()
             elif self.vindictive_potential():
                 self.player_takes_card()
             else:
                 if self.verbosity == 2:
-                    "  pass"
+                    print("  pass")
                 self.player_passes()
 
     def player_passes(self):
+        """
+        The current player plays a token from her token reserve,
+        then it's the next player's turn.
+        """
         player = self.players[self.whose_turn]
         player.play_token()
         if self.verbosity > 0:
@@ -360,31 +433,33 @@ class Table(object):
         self.play()
 
     def player_takes_card(self):
+        """
+        The current player takes the card card_up. If no cards remain in the
+        deck, the game ends. Otherwise, the game continues: a new card is drawn
+        and the same player may either take it or play a token and pass.
+        """
         player = self.players[self.whose_turn]
         if self.verbosity > 0:
             print("Player", self.whose_turn + 1, sorted(player.cards), \
                   "takes card:", self.card_up)
-        player.take_card(self.card_up)
-        player.tokens += self.pot
-        if player.tokens > player.max_tokens:
-            player.max_tokens = player.tokens
+        player.take_card(self.card_up, self.pot)
         self.pot = 0
-        if len(self.deck.cards) > 0:
-            self.card_up = self.deck.draw()
+        self.card_up = self.deck.draw()
+        if (self.card_up):
             if self.verbosity > 0:
                 print("Card up:", self.card_up)
             self.play()
         else:
             if self.verbosity > 0:
                 print("Game Over\n")
-            #self.score()
             return 0
 
-    def play(self):
-        self.get_effective_value()
-        self.player_logic()
-
     def score(self):
+        """
+        Obtain scores of all players and print (or return) them.
+        If verbosity = 0, scores and game info are returned as a list of
+        features for analysis. If verbosity > 0, scores are printed to screen.
+        """
         scores = []
         for i, player in enumerate(self.players):
             player.get_score()
@@ -393,6 +468,9 @@ class Table(object):
                 print("Player", i+1, " score:", player.score, \
                       " tokens:", player.tokens, \
                       " cards:", sorted(player.cards))
+        if self.verbosity > 0:
+            return 0
+        # construct computer-readable feature vector
         low = min(scores)
         wins = 0
         for player in self.players:
@@ -403,27 +481,38 @@ class Table(object):
             for player in self.players:
                 if player.win == 1:
                     player.win = 2
-        if self.verbosity == 0:
-            # computer-parsable feature vector
-            features = []
-            for player in self.players:
-                feature = []
-                feature.append(player.pos)
-                feature.append(player.win)
-                feature.append(player.score)
-                feature.append(player.card_threshold)
-                feature.append(player.token_threshold)
-                feature.append(player.eff_val_threshold)
-                feature.append(player.pass_before_first_card)
-                feature.append(player.min_tokens)
-                feature.append(player.max_tokens)
-                feature.append(player.cards)
-                features.append(feature)
-            return features
+        features = []
+        for player in self.players:
+            feature = []
+            feature.append(player.pos)
+            feature.append(player.win)
+            feature.append(player.score)
+            feature.append(player.init_threshold)
+            feature.append(player.token_threshold)
+            feature.append(player.eff_val_threshold)
+            feature.append(player.pot_threshold)
+            feature.append(min(player.token_history))
+            feature.append(max(player.token_history))
+            feature.append(mean(player.token_history))
+            feature.append(median_low(player.token_history))
+            feature.append(min(player.eff_val_history))
+            feature.append(max(player.eff_val_history))
+            feature.append(mean(player.eff_val_history))
+            feature.append(median_low(player.eff_val_history))
+            feature.append(len(player.cards))
+            feature.append(player.num_runs)
+            feature.append(player.cards[0])
+            feature.append(min(player.cards))
+            feature.append(max(player.cards))
+            feature.append(mean(player.cards))
+            feature.append(median_low(player.cards))
+            #feature.append(player.cards)
+            features.append(feature)
+        return features
 
 
 def main():
-    mytable = Table(num_ai_players=3, verbose=1)
+    mytable = Table(num_ai_players=3, verbose=2)
     mytable.play()
     mytable.score()
 

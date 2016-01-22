@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import sys
 
 class Player(object):

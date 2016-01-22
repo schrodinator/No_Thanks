@@ -1,7 +1,5 @@
-#!/usr/bin/python3
 import sys
 from random import randint
-from statistics import mean, median, median_low, median_high
 from player import Player
 from deck import Deck
 
@@ -67,7 +65,7 @@ class Table(object):
         (card_thresohld, token_threshold, and eff_val_threshold)
         """
         init_threshold = randint(self.deck.min_card, self.deck.max_card - 1)
-        eff_val_threshold = randint(0, 6)
+        eff_val_threshold = randint(0, 8)
         token_threshold = randint(0, 10)
         pot_threshold = randint(6, 20)
         self.players.append( \
@@ -211,7 +209,8 @@ class Table(object):
                 print("  no tokens left")
             self.player_takes_card()
         elif player.tokens < player.token_threshold \
-                  and self.pot > player.pot_threshold:
+                  and self.pot > player.pot_threshold \
+                  and len(self.deck.cards) > 9:
             if self.verbosity == 2:
                 print("  take it for the pot. tokens:", \
                       player.tokens, "  pot:", self.pot)
@@ -331,22 +330,9 @@ class Table(object):
             feature.append(player.token_threshold)
             feature.append(player.eff_val_threshold)
             feature.append(player.pot_threshold)
-            feature.append(min(player.token_history))
-            feature.append(max(player.token_history))
-            feature.append(mean(player.token_history))
-            feature.append(median_low(player.token_history))
-            feature.append(min(player.eff_val_history))
-            feature.append(max(player.eff_val_history))
-            feature.append(mean(player.eff_val_history))
-            feature.append(median_low(player.eff_val_history))
-            feature.append(len(player.cards))
-            feature.append(player.num_runs)
-            feature.append(player.cards[0])
-            feature.append(min(player.cards))
-            feature.append(max(player.cards))
-            feature.append(mean(player.cards))
-            feature.append(median_low(player.cards))
-            #feature.append(player.cards)
+            feature.append(player.token_history)
+            feature.append(player.eff_val_history)
+            feature.append(player.cards)
             features.append(feature)
         return features
 

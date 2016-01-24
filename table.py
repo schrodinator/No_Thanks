@@ -337,8 +337,8 @@ class Table(object):
         for player in self.players:
             feature = []
             feature.append(player.win)
-            feature.append(player.pos)
             feature.append(player.score)
+            feature.append(player.pos)
             feature.append(player.init_threshold)
             feature.append(player.token_threshold)
             feature.append(player.eff_val_threshold)
